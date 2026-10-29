@@ -107,20 +107,16 @@ export default async function Painel() {
               ))}</tr>
             </thead>
             <tbody>
-              {(txs ?? []).map((t) => (
+              {(txs ?? []).map((t: any) => (
                 <tr key={t.id} className="border-b border-areia last:border-0 align-top">
                   <td className="px-4 py-3 whitespace-nowrap">{quando(t.criado_em)}</td>
                   <td className="px-4 py-3">
                     {t.nome_convidado}
                     {t.mensagem && <span className="block max-w-xs text-xs text-cacau/60">“{t.mensagem}”</span>}
                   </td>
-                  <td className="px-4 py-3">
-                    {Array.isArray(t.presentes)
-                    ? (t.presentes[0] as { nome?: string })?.nome
-                    : (t.presentes as { nome?: string })?.nome}
-                  </td>
+                  <td className="px-4 py-3">{t.presentes?.nome}</td>
                   <td className="px-4 py-3 tabular-nums">{brl(Number(t.valor))}</td>
-                  <td className="px-4 py-3">{t.metodo === 'pix' ? 'Pix' : 'Cartão'}</td>
+                  <td className="px-4 py-3">{t.metodo === 'pix' ? 'Pix' : t.metodo === 'cartao' ? 'Cartão' : '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${selo[t.status]}`}>{t.status}</span>
                   </td>

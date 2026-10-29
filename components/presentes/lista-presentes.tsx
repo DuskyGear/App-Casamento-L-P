@@ -25,7 +25,6 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 
 /* ------------------------------------------------------------------ */
 /* Tipos e utilitários                                                 */
@@ -233,68 +232,65 @@ function CartaoPresente({
 }
 
 /* ------------------------------------------------------------------ */
-/* Checkout (simulado; pronto para trocar por Mercado Pago)            */
+/* Checkout: cria o pedido no servidor e leva para o Mercado Pago      */
 /* ------------------------------------------------------------------ */
 
-type Etapa = 'dados' | 'pagamento' | 'ok';
-
 function Checkout({
+  slug,
   itens,
   totalCents,
   onFechar,
-  onConcluir,
 }: {
+  slug: string;
   itens: { presente: Presente; cents: number }[];
   totalCents: number;
   onFechar: () => void;
-  onConcluir: () => void;
 }) {
-  const [etapa, setEtapa] = useState<Etapa>('dados');
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [mensagem, setMensagem] = useState('');
-  const [metodo, setMetodo] = useState<'pix' | 'cartao'>('pix');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && etapa !== 'ok' && onFechar();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !enviando && onFechar();
+    // ao voltar do Mercado Pago pelo botão "voltar" do navegador, libera o botão
+    const onShow = () => setEnviando(false);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [etapa, onFechar]);
+    window.addEventListener('pageshow', onShow);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pageshow', onShow);
+    };
+  }, [enviando, onFechar]);
 
-  async function registrar(e: React.FormEvent) {
+  async function pagar(e: React.FormEvent) {
     e.preventDefault();
     setEnviando(true);
     setErro(null);
-
-    const supabase = createClient();
-    const checkout_id = crypto.randomUUID();
-
-    // Um único INSERT = tudo ou nada. Sem .select(): o público não tem SELECT em transações.
-    const { error } = await supabase.from('transacoes_presentes').insert(
-      itens.map(({ presente, cents }) => ({
-        checkout_id,
-        presente_id: presente.id,
-        nome_convidado: nome.trim(),
-        email: email.trim(),
-        mensagem: mensagem.trim() || null,
-        valor: cents / 100,
-        metodo,
-      })),
-    );
-
-    setEnviando(false);
-    if (error) {
-      // mensagens das triggers (ex.: "Este presente já foi escolhido por outra pessoa")
-      setErro(error.message);
-      return;
+    try {
+      const r = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug,
+          nome: nome.trim(),
+          email: email.trim(),
+          mensagem: mensagem.trim() || null,
+          itens: itens.map(({ presente, cents }) => ({ presente_id: presente.id, valor: cents / 100 })),
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.url) {
+        setErro(j.erro ?? 'Não foi possível iniciar o pagamento. Tente novamente.');
+        setEnviando(false);
+        return;
+      }
+      window.location.href = j.url; // Checkout Pro do Mercado Pago
+    } catch {
+      setErro('Falha de conexão. Verifique sua internet e tente novamente.');
+      setEnviando(false);
     }
-    setEtapa('pagamento');
-
-    /* PRODUÇÃO: em vez de avançar direto, chame um Route Handler (/api/checkout)
-       que cria a preferência no Mercado Pago com a service key, grava mp_preference_id
-       e devolve o QR Code Pix ou o init_point do cartão. O webhook marca 'pago'. */
   }
 
   const campo =
@@ -308,103 +304,51 @@ function Checkout({
         aria-labelledby="titulo-checkout"
         className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-marfim p-6 sm:rounded-3xl"
       >
-        {etapa === 'dados' && (
-          <form onSubmit={registrar} className="space-y-5">
-            <h2 id="titulo-checkout" className="font-display text-2xl">
-              Finalizar presente
-            </h2>
+        <form onSubmit={pagar} className="space-y-5">
+          <h2 id="titulo-checkout" className="font-display text-2xl">
+            Finalizar presente
+          </h2>
 
-            <ul className="divide-y divide-areia rounded-2xl border border-ouro/30 bg-white/70 text-sm">
-              {itens.map(({ presente, cents }) => (
-                <li key={presente.id} className="flex justify-between gap-4 px-4 py-3">
-                  <span>{presente.nome}</span>
-                  <span className="tabular-nums">{brlCents(cents)}</span>
-                </li>
-              ))}
-              <li className="flex justify-between px-4 py-3 font-semibold">
-                <span>Total</span>
-                <span className="tabular-nums">{brlCents(totalCents)}</span>
+          <ul className="divide-y divide-areia rounded-2xl border border-ouro/30 bg-white/70 text-sm">
+            {itens.map(({ presente, cents }) => (
+              <li key={presente.id} className="flex justify-between gap-4 px-4 py-3">
+                <span>{presente.nome}</span>
+                <span className="tabular-nums">{brlCents(cents)}</span>
               </li>
-            </ul>
+            ))}
+            <li className="flex justify-between px-4 py-3 font-semibold">
+              <span>Total</span>
+              <span className="tabular-nums">{brlCents(totalCents)}</span>
+            </li>
+          </ul>
 
-            <div className="space-y-3">
-              <input required autoFocus minLength={2} placeholder="Seu nome" value={nome}
-                onChange={(e) => setNome(e.target.value)} className={campo} aria-label="Seu nome" />
-              <input required type="email" placeholder="Seu e-mail" value={email}
-                onChange={(e) => setEmail(e.target.value)} className={campo} aria-label="Seu e-mail" />
-              <textarea rows={3} maxLength={500} placeholder="Deixe uma mensagem para os noivos (opcional)"
-                value={mensagem} onChange={(e) => setMensagem(e.target.value)} className={campo}
-                aria-label="Mensagem para os noivos" />
-            </div>
+          <div className="space-y-3">
+            <input required autoFocus minLength={2} placeholder="Seu nome" value={nome}
+              onChange={(e) => setNome(e.target.value)} className={campo} aria-label="Seu nome" />
+            <input required type="email" placeholder="Seu e-mail" value={email}
+              onChange={(e) => setEmail(e.target.value)} className={campo} aria-label="Seu e-mail" />
+            <textarea rows={3} maxLength={500} placeholder="Deixe uma mensagem para os noivos (opcional)"
+              value={mensagem} onChange={(e) => setMensagem(e.target.value)} className={campo}
+              aria-label="Mensagem para os noivos" />
+          </div>
 
-            <fieldset className="grid grid-cols-2 gap-3">
-              <legend className="sr-only">Forma de pagamento</legend>
-              {(['pix', 'cartao'] as const).map((m) => (
-                <label key={m}
-                  className={`cursor-pointer rounded-xl border px-4 py-3 text-center has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-terracota ${
-                    metodo === m ? 'border-terracota bg-petala/50 font-medium' : 'border-ouro/40'
-                  }`}>
-                  <input type="radio" name="metodo" value={m} checked={metodo === m}
-                    onChange={() => setMetodo(m)} className="sr-only" />
-                  {m === 'pix' ? 'Pix' : 'Cartão'}
-                </label>
-              ))}
-            </fieldset>
+          <p className="text-sm text-cacau/70">
+            Você será levado ao ambiente seguro do Mercado Pago para escolher Pix, cartão ou outra forma de pagamento.
+          </p>
 
-            {erro && <p role="alert" className="rounded-xl bg-petala/60 px-4 py-3 text-sm text-terracota">{erro}</p>}
+          {erro && <p role="alert" className="rounded-xl bg-petala/60 px-4 py-3 text-sm text-terracota">{erro}</p>}
 
-            <div className="flex gap-3">
-              <button type="button" onClick={onFechar}
-                className="rounded-full border border-ouro/40 px-5 py-3 focus-visible:ring-2 focus-visible:ring-terracota">
-                Voltar
-              </button>
-              <button type="submit" disabled={enviando}
-                className="flex-1 rounded-full bg-terracota px-5 py-3 font-medium text-white focus-visible:ring-2 focus-visible:ring-terracota focus-visible:ring-offset-2 disabled:opacity-50">
-                {enviando ? 'Enviando…' : `Pagar ${brlCents(totalCents)}`}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {etapa === 'pagamento' && (
-          <div className="space-y-5">
-            <h2 id="titulo-checkout" className="font-display text-2xl">
-              {metodo === 'pix' ? 'Pague com Pix' : 'Pagamento com cartão'}
-            </h2>
-            {metodo === 'pix' ? (
-              <>
-                <div className="grid aspect-square w-40 place-items-center rounded-2xl border border-dashed border-ouro bg-white/70 text-center text-xs text-cacau/60">
-                  QR Code Pix (simulado)
-                </div>
-                <p className="break-all rounded-xl bg-areia px-4 py-3 font-mono text-xs">
-                  00020126580014br.gov.bcb.pix0136SIMULADO-{totalCents}5204000053039865802BR
-                </p>
-              </>
-            ) : (
-              <p className="text-sm leading-relaxed text-cacau/80">
-                Aqui você será levado ao ambiente seguro do Mercado Pago para informar os dados do cartão
-                (simulado).
-              </p>
-            )}
-            <button type="button" onClick={() => setEtapa('ok')}
-              className="w-full rounded-full bg-terracota px-5 py-3 font-medium text-white focus-visible:ring-2 focus-visible:ring-terracota focus-visible:ring-offset-2">
-              Simular pagamento aprovado
+          <div className="flex gap-3">
+            <button type="button" onClick={onFechar} disabled={enviando}
+              className="rounded-full border border-ouro/40 px-5 py-3 focus-visible:ring-2 focus-visible:ring-terracota disabled:opacity-50">
+              Voltar
+            </button>
+            <button type="submit" disabled={enviando}
+              className="flex-1 rounded-full bg-terracota px-5 py-3 font-medium text-white focus-visible:ring-2 focus-visible:ring-terracota focus-visible:ring-offset-2 disabled:opacity-50">
+              {enviando ? 'Abrindo o pagamento…' : `Ir para o pagamento · ${brlCents(totalCents)}`}
             </button>
           </div>
-        )}
-
-        {etapa === 'ok' && (
-          <div className="space-y-5 text-center">
-            <h2 id="titulo-checkout" className="font-display text-3xl">Obrigado, {nome.split(' ')[0]}!</h2>
-            <p className="leading-relaxed text-cacau/80">
-              Recebemos o seu carinho. Enviaremos a confirmação para {email}.
-            </p>
-            <button type="button" onClick={onConcluir}
-              className="rounded-full bg-terracota px-6 py-3 font-medium text-white focus-visible:ring-2 focus-visible:ring-terracota focus-visible:ring-offset-2">
-              Voltar à lista
-            </button>
-          </div>
-        )}
+        </form>
       </div>
     </div>
   );
@@ -414,7 +358,15 @@ function Checkout({
 /* Componente principal                                                */
 /* ------------------------------------------------------------------ */
 
-export default function ListaPresentes({ lista, presentes }: { lista: Lista; presentes: Presente[] }) {
+export default function ListaPresentes({
+  lista,
+  presentes,
+  slug,
+}: {
+  lista: Lista;
+  presentes: Presente[];
+  slug: string;
+}) {
   const [carrinho, setCarrinho] = useState<Carrinho>({});
   const [checkoutAberto, setCheckoutAberto] = useState(false);
 
@@ -474,15 +426,10 @@ export default function ListaPresentes({ lista, presentes }: { lista: Lista; pre
 
       {checkoutAberto && (
         <Checkout
+          slug={slug}
           itens={itens}
           totalCents={totalCents}
           onFechar={() => setCheckoutAberto(false)}
-          onConcluir={() => {
-            setCheckoutAberto(false);
-            setCarrinho({});
-            // recarrega os valores arrecadados vindos do servidor
-            window.location.reload();
-          }}
         />
       )}
     </main>

@@ -58,6 +58,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
             <Link href="/admin/padrinhos" className={link}>Padrinhos
             </Link>
+            <Link href="/admin/integracoes" className={link}>Integrações
+            </Link>
             <form action={sair}>
               <button className={link}>Sair</button>
             </form>
