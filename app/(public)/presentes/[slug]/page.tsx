@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import { supabasePublico } from '@/lib/supabase/publico';
 import ListaPresentes, { type Presente } from '@/components/presentes/lista-presentes';
 
-// Garante renderização dinâmica a cada requisição (dados sempre atualizados)
-export const dynamic = 'force-dynamic';
-
 export default async function PaginaPresentes({ params }: { params: Promise<{ slug: string }> }) {
+  // Solicita uma conexão dinâmica em tempo de execução (compatível com Cache Components)
+  await connection();
+
   const { slug } = await params;
 
   // Uma única consulta traz a lista e seus presentes
