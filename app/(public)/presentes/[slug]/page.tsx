@@ -3,8 +3,10 @@ import { connection } from 'next/server';
 import { supabasePublico } from '@/lib/supabase/publico';
 import ListaPresentes, { type Presente } from '@/components/presentes/lista-presentes';
 
+// Indica ao Next.js 16 para tratar a rota como dinamica com bloqueio no servidor
+export const instant = false;
+
 export default async function PaginaPresentes({ params }: { params: Promise<{ slug: string }> }) {
-  // Solicita uma conexão dinâmica em tempo de execução (compatível com Cache Components)
   await connection();
 
   const { slug } = await params;
