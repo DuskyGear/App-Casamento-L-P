@@ -33,6 +33,7 @@ function telefoneBR(t: string) {
 }
 
 /** Busca os dados do CNPJ: primeiro nos fornecedores já cadastrados, depois na Receita (via BrasilAPI). */
+/** Busca os dados do CNPJ: primeiro nos fornecedores já cadastrados, depois na Receita (BrasilAPI com fallback para MinhaReceita). */
 export async function buscarCnpj(
   cnpjBruto: string,
 ): Promise<{ erro: string } | { dados: DadosFornecedor; aviso?: string }> {
@@ -60,27 +61,47 @@ export async function buscarCnpj(
     };
   }
 
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json',
+  };
+
   try {
-    const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+    // 1ª Tentativa: BrasilAPI
+    let r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
       cache: 'no-store',
+      headers,
       signal: AbortSignal.timeout(8000),
     });
+
+    // 2ª Tentativa (Fallback): MinhaReceita caso a BrasilAPI retorne erro (429, 500, 503, etc)
+    if (!r.ok && r.status !== 404) {
+      r = await fetch(`https://minhareceita.org/${cnpj}`, {
+        cache: 'no-store',
+        headers,
+        signal: AbortSignal.timeout(8000),
+      });
+    }
+
     if (r.status === 404) return { erro: 'CNPJ não encontrado na Receita. Preencha os dados manualmente.' };
     if (!r.ok) return { erro: 'A consulta está indisponível agora. Preencha manualmente ou tente de novo.' };
 
     const d = await r.json();
-    const situacao = String(d.descricao_situacao_cadastral ?? '').toUpperCase();
+    const situacao = String(d.descricao_situacao_cadastral ?? d.situacao_cadastral ?? '').toUpperCase();
+    
+    const dddTel = d.ddd_telefone_1 ?? (d.ddd_1 && d.telefone_1 ? `${d.ddd_1}${d.telefone_1}` : '');
+
     return {
       dados: {
         cnpj,
-        razao_social: d.razao_social ?? '',
+        razao_social: d.razao_social ?? d.razao_social_nome_empresarial ?? '',
         nome_fantasia: d.nome_fantasia ?? '',
         email: String(d.email ?? '').toLowerCase(),
-        telefone: d.ddd_telefone_1 ? telefoneBR(String(d.ddd_telefone_1)) : '',
-        municipio: d.municipio ?? '',
-        uf: d.uf ?? '',
+        telefone: dddTel ? telefoneBR(String(dddTel)) : '',
+        municipio: d.municipio ?? d.nome_municipio ?? '',
+        uf: d.uf ?? d.sigla_uf ?? '',
       },
-      aviso: situacao && situacao !== 'ATIVA' ? `Atenção: situação cadastral ${situacao}.` : undefined,
+      aviso: situacao && !['ATIVA', '2'].includes(situacao) ? `Atenção: situação cadastral ${situacao}.` : undefined,
     };
   } catch {
     return { erro: 'Não foi possível consultar agora. Preencha manualmente ou tente de novo.' };
