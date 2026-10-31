@@ -1,12 +1,11 @@
 import { notFound } from 'next/navigation';
-import { unstable_cacheLife as cacheLife } from 'next/cache';
 import { supabasePublico } from '@/lib/supabase/publico';
 import ListaPresentes, { type Presente } from '@/components/presentes/lista-presentes';
 
-export default async function PaginaPresentes({ params }: { params: Promise<{ slug: string }> }) {
-  'use cache';
-  cacheLife('minutes'); // Faz o cache por alguns minutos
+// Garante renderização dinâmica a cada requisição (dados sempre atualizados)
+export const dynamic = 'force-dynamic';
 
+export default async function PaginaPresentes({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
   // Uma única consulta traz a lista e seus presentes
