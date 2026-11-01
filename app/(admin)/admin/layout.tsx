@@ -1,8 +1,10 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sair } from './actions';
 import AdminHeader from '@/components/admin/admin-header';
+import ContadorAdmin from '@/components/admin/contador-admin';
 
 export const instant = false;
 
@@ -39,6 +41,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-dvh bg-marfim text-cacau">
       <AdminHeader sairAction={sair} />
+
+      {/* Renderização do Contador no Painel com Suspense */}
+      <Suspense fallback={null}>
+        <ContadorAdmin />
+      </Suspense>
+
       <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
     </div>
   );
