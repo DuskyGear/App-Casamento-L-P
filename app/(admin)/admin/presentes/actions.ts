@@ -84,3 +84,22 @@ export async function atualizarPresente(id: string, _prev: Estado, fd: FormData)
   atualizarTelas();
   redirect('/admin/presentes');
 }
+
+/** Exclui um presente. Presentes que já têm contribuições não podem ser excluídos (use "Ocultar"). */
+export async function excluirPresente(id: string): Promise<{ erro?: string }> {
+  const supabase = await exigirAdmin();
+
+  const { count } = await supabase
+    .from('transacoes_presentes')
+    .select('id', { count: 'exact', head: true })
+    .eq('presente_id', id);
+  if (count && count > 0) {
+    return { erro: 'Este presente já tem contribuições e não pode ser excluído. Use o ícone de ocultar.' };
+  }
+
+  const { error } = await supabase.from('presentes').delete().eq('id', id);
+  if (error) return { erro: error.message };
+
+  atualizarTelas();
+  return {};
+}
