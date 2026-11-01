@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -13,13 +14,28 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Busca = Record<string, string | string[] | undefined>;
 const um = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-export default async function Obrigado({
-  params,
-  searchParams,
-}: {
+type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<Busca>;
-}) {
+};
+
+// Next 16 (Cache Components): a casca da página é gerada na hora e o conteúdo que depende
+// da URL e do banco (params, searchParams, consultas) é enviado dentro do <Suspense>.
+export default function Obrigado(props: Props) {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-dvh place-items-center bg-marfim px-6 text-center text-cacau">
+          <p className="font-display text-2xl italic">Confirmando o seu pagamento…</p>
+        </main>
+      }
+    >
+      <Conteudo {...props} />
+    </Suspense>
+  );
+}
+
+async function Conteudo({ params, searchParams }: Props) {
   const { slug } = await params;
   const sp = await searchParams;
   const paymentId = um(sp.payment_id) ?? um(sp.collection_id);
