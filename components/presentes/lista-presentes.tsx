@@ -1,30 +1,7 @@
 'use client';
 
-/**
- * Lista de presentes (página pública).
- *
- * Tailwind v3 → tailwind.config.ts, theme.extend:
- *   colors: {
- *     marfim:    '#FBF8F3',  // fundo
- *     areia:     '#F0E6DA',  // trilhas, divisórias
- *     petala:    '#EFD5CC',  // rosa pastel
- *     ouro:      '#B8924A',  // detalhes e barra de progresso
- *     terracota: '#B05A3F',  // ações
- *     cacau:     '#4A3B35',  // texto
- *   },
- *   fontFamily: {
- *     display: ['var(--font-playfair)', 'Georgia', 'serif'],
- *     sans:    ['var(--font-inter)', 'system-ui', 'sans-serif'],
- *   }
- *
- * app/layout.tsx:
- *   import { Playfair_Display, Inter } from 'next/font/google';
- *   const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
- *   const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
- *   <body className={`${playfair.variable} ${inter.variable} font-sans bg-marfim text-cacau`}>
- */
-
 import { useEffect, useMemo, useState } from 'react';
+import ContadorCasamento from '@/components/contador-casamento';
 
 /* ------------------------------------------------------------------ */
 /* Tipos e utilitários                                                 */
@@ -362,10 +339,12 @@ export default function ListaPresentes({
   lista,
   presentes,
   slug,
+  dataCasamento,
 }: {
   lista: Lista;
   presentes: Presente[];
   slug: string;
+  dataCasamento?: string | null;
 }) {
   const [carrinho, setCarrinho] = useState<Carrinho>({});
   const [checkoutAberto, setCheckoutAberto] = useState(false);
@@ -393,6 +372,15 @@ export default function ListaPresentes({
         <div className="mx-auto my-6 h-px w-24 bg-ouro" aria-hidden />
         {lista.mensagem && <p className="font-display text-lg leading-relaxed text-cacau/80">{lista.mensagem}</p>}
       </header>
+
+      {dataCasamento && (
+        <ContadorCasamento
+          data={dataCasamento}
+          className={`mx-auto mb-10 w-fit md:fixed md:right-6 md:z-30 md:m-0 ${
+            itens.length > 0 ? 'md:bottom-24' : 'md:bottom-6'
+          }`}
+        />
+      )}
 
       <section aria-label="Presentes" className="mx-auto grid max-w-6xl gap-6 px-6 sm:grid-cols-2 lg:grid-cols-3">
         {presentes.map((p) => (

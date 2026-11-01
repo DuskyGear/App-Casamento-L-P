@@ -11,7 +11,7 @@ export default function AdminHeader({ sairAction }: AdminHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const linkClass =
-    'rounded-full px-4 py-2 text-sm hover:bg-areia focus-visible:ring-2 focus-visible:ring-terracota transition-colors';
+    'whitespace-nowrap rounded-full px-4 py-2 text-sm hover:bg-areia focus-visible:ring-2 focus-visible:ring-terracota transition-colors';
   const mobileLinkClass =
     'block rounded-xl px-4 py-3 text-base font-medium hover:bg-areia focus-visible:ring-2 focus-visible:ring-terracota transition-colors';
 
@@ -40,21 +40,15 @@ export default function AdminHeader({ sairAction }: AdminHeaderProps) {
           </svg>
         </button>
 
-        {/* Título (Mobile: Direita | Desktop: Esquerda via md:order-first) */}
+        {/* Título (Mobile: Direita | Desktop: Esquerda) */}
         <span className="font-display text-xl italic md:order-first">
           Nosso casamento
         </span>
 
-        {/* Menu Desktop (Escondido no mobile) */}
+        {/* Menu Desktop */}
         <nav className="hidden items-center gap-1 md:flex">
           <Link href="/admin" className={linkClass}>
             Painel
-          </Link>
-          <Link href="/admin/orcamentos" className={linkClass}>
-            Orçamentos
-          </Link>
-          <Link href="/admin/presentes" className={linkClass}>
-            Presentes
           </Link>
           <Link href="/admin/convidados" className={linkClass}>
             Convidados
@@ -62,8 +56,17 @@ export default function AdminHeader({ sairAction }: AdminHeaderProps) {
           <Link href="/admin/padrinhos" className={linkClass}>
             Padrinhos
           </Link>
+          <Link href="/admin/orcamentos" className={linkClass}>
+            Orçamentos
+          </Link>
+          <Link href="/admin/presentes" className={linkClass}>
+            Presentes
+          </Link>
           <Link href="/admin/integracoes" className={linkClass}>
             Integrações
+          </Link>
+          <Link href="/admin/configuracoes" className={linkClass}>
+            Configurações
           </Link>
           <form action={sairAction}>
             <button type="submit" className={linkClass}>
@@ -85,20 +88,6 @@ export default function AdminHeader({ sairAction }: AdminHeaderProps) {
               Painel
             </Link>
             <Link
-              href="/admin/orcamentos"
-              className={mobileLinkClass}
-              onClick={() => setIsOpen(false)}
-            >
-              Orçamentos
-            </Link>
-            <Link
-              href="/admin/presentes"
-              className={mobileLinkClass}
-              onClick={() => setIsOpen(false)}
-            >
-              Presentes
-            </Link>
-            <Link
               href="/admin/convidados"
               className={mobileLinkClass}
               onClick={() => setIsOpen(false)}
@@ -113,11 +102,32 @@ export default function AdminHeader({ sairAction }: AdminHeaderProps) {
               Padrinhos
             </Link>
             <Link
+              href="/admin/orcamentos"
+              className={mobileLinkClass}
+              onClick={() => setIsOpen(false)}
+            >
+              Orçamentos
+            </Link>
+            <Link
+              href="/admin/presentes"
+              className={mobileLinkClass}
+              onClick={() => setIsOpen(false)}
+            >
+              Presentes
+            </Link>
+            <Link
               href="/admin/integracoes"
               className={mobileLinkClass}
               onClick={() => setIsOpen(false)}
             >
               Integrações
+            </Link>
+            <Link
+              href="/admin/configuracoes"
+              className={mobileLinkClass}
+              onClick={() => setIsOpen(false)}
+            >
+              Configurações
             </Link>
             <form action={sairAction} className="pt-2">
               <button

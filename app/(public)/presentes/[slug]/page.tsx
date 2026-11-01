@@ -15,7 +15,7 @@ export default async function PaginaPresentes({ params }: { params: Promise<{ sl
   const { data: lista } = await supabasePublico()
     .from('listas_presentes')
     .select(
-      `titulo, mensagem,
+      `titulo, mensagem, data_casamento,
        presentes (id, nome, descricao, imagem_url, tipo, valor_meta, valor_arrecadado, valor_minimo_contribuicao, status)`,
     )
     .eq('slug', slug)
@@ -29,6 +29,7 @@ export default async function PaginaPresentes({ params }: { params: Promise<{ sl
       lista={{ titulo: lista.titulo, mensagem: lista.mensagem }}
       presentes={(lista.presentes ?? []) as Presente[]}
       slug={slug}
+      dataCasamento={lista.data_casamento}
     />
   );
 }
